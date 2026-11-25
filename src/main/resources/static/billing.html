@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartLogix – Invoices &amp; Payments</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="slx-backdrop" id="slxBackdrop"></div>
+<div class="slx-shell">
+    <aside class="slx-sidebar" id="slxSidebar"></aside>
+    <div class="slx-main">
+        <header class="slx-topbar" id="slxTopbar"></header>
+        <main class="slx-content">
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="slx-card slx-kpi">
+                        <div class="slx-kpi-label">Total Billed</div>
+                        <div class="slx-kpi-value mt-1" id="sumBilled">...</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="slx-card slx-kpi">
+                        <div class="slx-kpi-label">Collected Revenue</div>
+                        <div class="slx-kpi-value text-success mt-1" id="sumCollected">...</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="slx-card slx-kpi">
+                        <div class="slx-kpi-label">Outstanding Receivables</div>
+                        <div class="slx-kpi-value text-danger mt-1" id="sumOutstanding">...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="slx-card overflow-hidden">
+                <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+                    <h6 class="fw-bold mb-0">Freight Tax Invoices</h6>
+                    <select id="payStatusFilter" class="form-select form-select-sm" style="width:auto;">
+                        <option value="ALL">All Invoices</option>
+                        <option value="UNPAID">Unpaid</option>
+                        <option value="PARTIAL">Partial</option>
+                        <option value="PAID">Paid</option>
+                    </select>
+                </div>
+                <div class="table-responsive">
+                    <table class="table slx-table">
+                        <thead>
+                            <tr>
+                                <th>Invoice #</th>
+                                <th>Customer &amp; AWB</th>
+                                <th>Due Date</th>
+                                <th>Total</th>
+                                <th>Paid</th>
+                                <th>Balance</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="invoicesBody">
+                            <tr><td colspan="8" class="text-center py-4 text-muted">Loading invoices...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- Record Payment Modal -->
+<div class="modal fade" id="payModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold">Record Invoice Payment</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="payForm">
+                <div class="modal-body">
+                    <input type="hidden" id="payInvoiceId">
+                    <div class="p-2 rounded bg-light small mb-3 font-mono fw-semibold" id="payInvoiceInfo"></div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Amount (INR) *</label>
+                        <input type="number" step="0.01" min="1" id="payAmount" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Payment Method</label>
+                        <select id="payMethod" class="form-select">
+                            <option value="NEFT/RTGS">NEFT / RTGS Bank Transfer</option>
+                            <option value="UPI">Corporate UPI</option>
+                            <option value="CARD">Corporate Card</option>
+                            <option value="CHEQUE">Cheque</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">UTR / Transaction Reference</label>
+                        <input type="text" id="payRef" class="form-control font-mono" placeholder="e.g., UTR20261125991">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success btn-sm">Confirm Payment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Invoice Detail Modal -->
+<div class="modal fade" id="invDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold">Tax Invoice Breakdown</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="invDetailBody"></div>
+            <div class="modal-footer">
+                <button class="btn btn-light btn-sm" data-bs-dismiss="modal">Close</button>
+                <button class="btn btn-navy btn-sm" onclick="window.print()"><i class="bi bi-printer me-1"></i>Print Invoice</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api.js"></script>
+<script src="js/layout.js"></script>
+<script>
+let payModalInst = null;
+let cachedInvoices = [];
+
+(async function () {
+    const user = await window.SLX.initAppShell("Invoices & Payments");
+    if (!user) return;
+    payModalInst = new bootstrap.Modal(document.getElementById("payModal"));
+    document.getElementById("payStatusFilter").addEventListener("change", loadInvoices);
+    await loadInvoices();
+})();
+
+async function loadInvoices() {
+    const status = encodeURIComponent(document.getElementById("payStatusFilter").value);
+    try {
+        const data = await window.SLX.apiFetch(`/api/billing/invoices?status=${status}`);
+        cachedInvoices = data.invoices;
+        document.getElementById("sumBilled").textContent = window.SLX.formatINR(data.summary.totalBilled);
+        document.getElementById("sumCollected").textContent = window.SLX.formatINR(data.summary.totalCollected);
+        document.getElementById("sumOutstanding").textContent = window.SLX.formatINR(data.summary.outstanding);
+
+        const tbody = document.getElementById("invoicesBody");
+        if (!data.invoices.length) {
+            tbody.innerHTML = `<tr><td colspan="8"><div class="slx-empty"><i class="bi bi-receipt"></i>No invoices found.</div></td></tr>`;
+            return;
+        }
+        tbody.innerHTML = data.invoices.map((i) => `
+            <tr>
+                <td class="fw-bold font-mono">${window.SLX.escapeHtml(i.invoiceNumber)}</td>
+                <td>
+                    <div class="fw-medium">${window.SLX.escapeHtml(i.customerName)}</div>
+                    <div class="font-mono text-muted small">${window.SLX.escapeHtml(i.trackingNumber || i.bookingReference)}</div>
+                </td>
+                <td class="small font-mono">${window.SLX.escapeHtml(i.dueDate)}</td>
+                <td class="fw-semibold">${window.SLX.formatINR(i.totalAmount)}</td>
+                <td class="text-success">${window.SLX.formatINR(i.amountPaid)}</td>
+                <td class="${i.balanceDue > 0 ? "text-danger fw-semibold" : "text-muted"}">${window.SLX.formatINR(i.balanceDue)}</td>
+                <td>${window.SLX.getStatusBadge(i.paymentStatus)}</td>
+                <td class="text-nowrap">
+                    <button class="btn btn-light border btn-sm" onclick="viewInvoice(${i.invoiceId})">View</button>
+                    ${i.balanceDue > 0 ? `<button class="btn btn-success btn-sm" onclick="openPay(${i.invoiceId})">Pay</button>` : ""}
+                </td>
+            </tr>
+        `).join("");
+    } catch (err) {
+        window.SLX.showToast(err.message, "error");
+    }
+}
+
+function openPay(invoiceId) {
+    const inv = cachedInvoices.find((x) => x.invoiceId === invoiceId);
+    if (!inv) return;
+    document.getElementById("payInvoiceId").value = inv.invoiceId;
+    document.getElementById("payInvoiceInfo").textContent = `${inv.invoiceNumber} — Balance Due: ${window.SLX.formatINR(inv.balanceDue)}`;
+    document.getElementById("payAmount").value = inv.balanceDue;
+    document.getElementById("payAmount").max = inv.balanceDue;
+    payModalInst.show();
+}
+
+document.getElementById("payForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const id = document.getElementById("payInvoiceId").value;
+    try {
+        const res = await window.SLX.apiFetch(`/api/billing/invoices/${id}/payments`, {
+            method: "POST",
+            body: JSON.stringify({
+                amount: document.getElementById("payAmount").value,
+                paymentMethod: document.getElementById("payMethod").value,
+                referenceNumber: document.getElementById("payRef").value
+            })
+        });
+        payModalInst.hide();
+        e.target.reset();
+        window.SLX.showToast(res.message, "success");
+        loadInvoices();
+    } catch (err) {
+        window.SLX.showToast(err.message, "error");
+    }
+});
+
+async function viewInvoice(invoiceId) {
+    try {
+        const data = await window.SLX.apiFetch(`/api/billing/invoices/${invoiceId}`);
+        const inv = data.invoice;
+        document.getElementById("invDetailBody").innerHTML = `
+            <div class="d-flex justify-content-between border-bottom pb-3 mb-3">
+                <div>
+                    <h5 class="fw-bold mb-0">SMARTLOGIX GLOBAL LOGISTICS</h5>
+                    <div class="small text-muted">Tax Invoice &bull; ${window.SLX.escapeHtml(inv.invoice_number)}</div>
+                </div>
+                <div class="text-end small">
+                    <div><strong>Bill To:</strong> ${window.SLX.escapeHtml(inv.company_name || inv.customer_name)}</div>
+                    <div class="text-muted">${window.SLX.escapeHtml(inv.customer_address || "")}</div>
+                    <div class="font-mono text-muted">GSTIN: ${window.SLX.escapeHtml(inv.customer_gstin || "N/A")}</div>
+                </div>
+            </div>
+            <table class="table table-sm small mb-3">
+                <tbody>
+                    <tr><td>Base Freight Charge (${window.SLX.escapeHtml(window.SLX.formatServiceType(inv.service_type))})</td><td class="text-end">${window.SLX.formatINR(inv.base_charge)}</td></tr>
+                    <tr><td>Weight Charge (${inv.weight_kg} kg)</td><td class="text-end">${window.SLX.formatINR(inv.weight_charge)}</td></tr>
+                    <tr><td>Fuel Surcharge</td><td class="text-end">${window.SLX.formatINR(inv.fuel_surcharge)}</td></tr>
+                    <tr><td>GST</td><td class="text-end">${window.SLX.formatINR(inv.tax_amount)}</td></tr>
+                    <tr class="fw-bold table-light"><td>Total Invoice Amount</td><td class="text-end">${window.SLX.formatINR(inv.total_amount)}</td></tr>
+                    <tr><td>Amount Paid</td><td class="text-end text-success">${window.SLX.formatINR(inv.amount_paid)}</td></tr>
+                </tbody>
+            </table>
+            <div class="small fw-semibold mb-1">Payment Ledger</div>
+            ${data.payments.length ? data.payments.map((p) => `<div class="small text-muted">&bull; ${window.SLX.formatINR(p.amount)} via ${window.SLX.escapeHtml(p.paymentMethod)} (${window.SLX.escapeHtml(p.referenceNumber)})</div>`).join("") : '<div class="small text-muted">No payments recorded yet.</div>'}
+        `;
+        new bootstrap.Modal(document.getElementById("invDetailModal")).show();
+    } catch (err) {
+        window.SLX.showToast(err.message, "error");
+    }
+}
+</script>
+</body>
+</html>

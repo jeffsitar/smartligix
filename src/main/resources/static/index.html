@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartLogix – Enterprise Logistics Platform</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="auth-bg d-flex align-items-center justify-content-center p-3">
+<div class="container" style="max-width: 1020px;">
+    <div class="card border-0 shadow-lg overflow-hidden" style="border-radius: 16px;">
+        <div class="row g-0">
+            <div class="col-lg-5 p-4 p-md-5 text-white d-flex flex-column justify-content-between" style="background: linear-gradient(160deg, #0B1628 0%, #162844 100%);">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-4">
+                        <div class="slx-brand-mark"><i class="bi bi-boxes"></i></div>
+                        <div>
+                            <h4 class="mb-0 fw-bold tracking-wide">SMARTLOGIX</h4>
+                            <span style="font-size:0.72rem;color:#94A3B8;letter-spacing:0.8px;">ENTERPRISE LOGISTICS SUITE</span>
+                        </div>
+                    </div>
+                    <h3 class="fw-bold mb-3" style="line-height:1.3;">Supply-chain visibility from dispatch to doorstep.</h3>
+                    <p class="small text-secondary mb-4" style="color:#CBD5E1 !important;">
+                        Unified freight booking, automated rate calculation, real-time fleet dispatch, live route tracking, and GST-ready invoicing.
+                    </p>
+                    <div class="d-flex flex-column gap-2 small" style="color:#E2E8F0;">
+                        <div><i class="bi bi-check-circle-fill text-warning me-2"></i>Role-based Control Tower &amp; Customer Portal</div>
+                        <div><i class="bi bi-check-circle-fill text-warning me-2"></i>Live Geospatial Tracking &amp; Proof of Delivery</div>
+                        <div><i class="bi bi-check-circle-fill text-warning me-2"></i>Automated Freight Billing &amp; Audit Trails</div>
+                    </div>
+                </div>
+                <div class="pt-4 mt-4 border-top border-secondary border-opacity-25 small text-secondary">
+                    SmartLogix Global Logistics Pvt. Ltd. &bull; 24&times;7 Operations Desk
+                </div>
+            </div>
+
+            <div class="col-lg-7 p-4 p-md-5 bg-white">
+                <ul class="nav nav-pills nav-fill bg-light p-1 rounded-3 mb-4" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active fw-semibold small" data-bs-toggle="pill" data-bs-target="#paneSignIn" type="button">
+                            <i class="bi bi-shield-lock me-1"></i> Workspace Sign In
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link fw-semibold small" data-bs-toggle="pill" data-bs-target="#panePublicTrack" type="button">
+                            <i class="bi bi-geo-alt me-1"></i> Track Consignment
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="paneSignIn">
+                        <h4 class="fw-bold mb-1">Sign in to your account</h4>
+                        <p class="text-muted small mb-4">Enter your corporate or customer portal credentials.</p>
+                        <div id="loginAlert" class="alert alert-danger d-none py-2 small"></div>
+                        <form id="loginForm" autocomplete="on">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small" for="email">Work Email</label>
+                                <input type="email" id="email" class="form-control" placeholder="name@company.com" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small" for="password">Password</label>
+                                <input type="password" id="password" class="form-control" placeholder="Enter your password" required>
+                            </div>
+                            <button type="submit" id="loginBtn" class="btn btn-navy w-100 py-2 mt-1">
+                                SIGN IN <i class="bi bi-arrow-right ms-1"></i>
+                            </button>
+                        </form>
+                        <div class="text-center mt-4 pt-3 border-top small text-muted">
+                            Shipping with SmartLogix for the first time?
+                            <a href="#" class="fw-semibold text-decoration-none" style="color:var(--slx-accent);" data-bs-toggle="modal" data-bs-target="#registerModal">Create Customer Account</a>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane fade" id="panePublicTrack">
+                        <h4 class="fw-bold mb-1">Public Shipment Tracking</h4>
+                        <p class="text-muted small mb-3">Check live status and checkpoint history without signing in.</p>
+                        <form id="publicTrackForm" class="input-group mb-3">
+                            <input type="text" id="publicTrkInput" class="form-control font-mono" placeholder="Enter Tracking ID (e.g., TRK-2026-88912)" required>
+                            <button class="btn btn-orange px-4" type="submit">Track</button>
+                        </form>
+                        <div id="publicTrackError" class="alert alert-danger d-none small py-2"></div>
+                        <div id="publicTrackResult" class="d-none border rounded-3 p-3 bg-light">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <div class="fw-bold font-mono" id="ptNum"></div>
+                                    <div class="small text-muted" id="ptRoute"></div>
+                                </div>
+                                <div id="ptBadge"></div>
+                            </div>
+                            <div class="small text-muted mb-2" id="ptEta"></div>
+                            <div id="ptTimeline" class="mt-3"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Customer Self-Registration Modal -->
+<div class="modal fade" id="registerModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom">
+                <h5 class="modal-title fw-bold">Create Customer Portal Account</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="registerForm">
+                <div class="modal-body">
+                    <div id="regAlert" class="alert alert-danger d-none small py-2"></div>
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Full Name *</label>
+                            <input type="text" id="regName" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Company Name</label>
+                            <input type="text" id="regCompany" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Email *</label>
+                            <input type="email" id="regEmail" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Phone *</label>
+                            <input type="text" id="regPhone" class="form-control" placeholder="+91 ..." required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold">Business Address *</label>
+                            <input type="text" id="regAddress" class="form-control" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold">Password (min 6 characters) *</label>
+                            <input type="password" id="regPassword" class="form-control" minlength="6" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-orange">Create Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api.js"></script>
+<script>
+// If already authenticated, go straight to Control Tower
+fetch("/api/auth/me", { credentials: "same-origin" }).then((r) => {
+    if (r.ok) window.location.href = "dashboard.html";
+}).catch(() => {});
+
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const alertBox = document.getElementById("loginAlert");
+    const btn = document.getElementById("loginBtn");
+    alertBox.classList.add("d-none");
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Signing in...';
+
+    try {
+        await window.SLX.apiFetch("/api/auth/login", {
+            method: "POST",
+            body: JSON.stringify({
+                email: document.getElementById("email").value,
+                password: document.getElementById("password").value
+            })
+        });
+        window.location.href = "dashboard.html";
+    } catch (err) {
+        alertBox.textContent = err.message;
+        alertBox.classList.remove("d-none");
+        btn.disabled = false;
+        btn.innerHTML = 'SIGN IN <i class="bi bi-arrow-right ms-1"></i>';
+    }
+});
+
+document.getElementById("registerForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const alertBox = document.getElementById("regAlert");
+    alertBox.classList.add("d-none");
+    try {
+        await window.SLX.apiFetch("/api/auth/register", {
+            method: "POST",
+            body: JSON.stringify({
+                fullName: document.getElementById("regName").value,
+                companyName: document.getElementById("regCompany").value,
+                email: document.getElementById("regEmail").value,
+                phone: document.getElementById("regPhone").value,
+                address: document.getElementById("regAddress").value,
+                password: document.getElementById("regPassword").value
+            })
+        });
+        window.location.href = "dashboard.html";
+    } catch (err) {
+        alertBox.textContent = err.message;
+        alertBox.classList.remove("d-none");
+    }
+});
+
+document.getElementById("publicTrackForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const trk = document.getElementById("publicTrkInput").value.trim();
+    const errBox = document.getElementById("publicTrackError");
+    const resBox = document.getElementById("publicTrackResult");
+    errBox.classList.add("d-none");
+    resBox.classList.add("d-none");
+    try {
+        const d = await window.SLX.apiFetch(`/api/shipments/${encodeURIComponent(trk)}`);
+        document.getElementById("ptNum").textContent = `${d.trackingNumber} (${d.bookingReference})`;
+        document.getElementById("ptRoute").textContent = `${d.pickupAddress} → ${d.deliveryAddress}`;
+        document.getElementById("ptBadge").innerHTML = window.SLX.getStatusBadge(d.currentStatus);
+        document.getElementById("ptEta").textContent = `Est. Delivery: ${d.estimatedDeliveryDate} • Service: ${window.SLX.formatServiceType(d.serviceType)}`;
+        document.getElementById("ptTimeline").innerHTML = d.timeline.slice(0, 4).map((t) => `
+            <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <div class="fw-semibold small">${window.SLX.escapeHtml(t.status.replace(/_/g, " "))} <span class="text-muted fw-normal">&bull; ${window.SLX.escapeHtml(t.updatedAt)}</span></div>
+                <div class="small">${window.SLX.escapeHtml(t.locationNote)}</div>
+            </div>
+        `).join("");
+        resBox.classList.remove("d-none");
+    } catch (err) {
+        errBox.textContent = err.message;
+        errBox.classList.remove("d-none");
+    }
+});
+</script>
+</body>
+</html>

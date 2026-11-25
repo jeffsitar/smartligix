@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartLogix – Bookings &amp; Consignments</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="slx-backdrop" id="slxBackdrop"></div>
+<div class="slx-shell">
+    <aside class="slx-sidebar" id="slxSidebar"></aside>
+    <div class="slx-main">
+        <header class="slx-topbar" id="slxTopbar"></header>
+        <main class="slx-content">
+            <div class="row g-4">
+                <div class="col-xl-4">
+                    <div class="slx-card p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="fw-bold mb-0"><i class="bi bi-plus-circle me-1 text-warning"></i>Create Consignment</h6>
+                            <span class="badge bg-light text-dark border">Auto-Invoiced</span>
+                        </div>
+                        <form id="bookingForm">
+                            <div id="customerFieldsWrap">
+                                <div class="mb-2">
+                                    <label class="form-label small fw-semibold">Customer Name *</label>
+                                    <input type="text" id="customerName" class="form-control form-control-sm" placeholder="Company or contact name" required>
+                                </div>
+                                <div class="row g-2 mb-2">
+                                    <div class="col-6">
+                                        <label class="form-label small fw-semibold">Phone *</label>
+                                        <input type="text" id="phone" class="form-control form-control-sm" placeholder="+91 ..." required>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small fw-semibold">Email</label>
+                                        <input type="email" id="customerEmail" class="form-control form-control-sm" placeholder="ops@client.in">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small fw-semibold">Pickup Address *</label>
+                                <input type="text" id="pickupAddress" class="form-control form-control-sm" placeholder="e.g., Andheri East, Mumbai" required>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small fw-semibold">Delivery Address *</label>
+                                <input type="text" id="deliveryAddress" class="form-control form-control-sm" placeholder="e.g., Hinjewadi Phase 1, Pune" required>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small fw-semibold">Cargo / Parcel Description *</label>
+                                <input type="text" id="parcelDescription" class="form-control form-control-sm" placeholder="e.g., Industrial Electronics (4 crates)" required>
+                            </div>
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <label class="form-label small fw-semibold">Service Tier</label>
+                                    <select id="serviceType" class="form-select form-select-sm">
+                                        <option value="STANDARD">Standard Road Freight</option>
+                                        <option value="EXPRESS">Express Air / Priority</option>
+                                        <option value="COLD_CHAIN">Cold Chain Logistics</option>
+                                        <option value="PORT_CONTAINER">Port / Container Cargo</option>
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small fw-semibold">Weight (kg) *</label>
+                                    <input type="number" step="0.5" min="0.5" id="weightKg" class="form-control form-control-sm" value="10" required>
+                                </div>
+                            </div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label class="form-label small fw-semibold">Dimensions (cm)</label>
+                                    <input type="text" id="dimensionsCm" class="form-control form-control-sm" value="50x40x30">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small fw-semibold">Declared Value (INR)</label>
+                                    <input type="number" min="0" id="declaredValue" class="form-control form-control-sm" value="25000">
+                                </div>
+                            </div>
+
+                            <div class="p-3 rounded-3 bg-light border mb-3 small" id="quoteBox">
+                                <div class="d-flex justify-content-between mb-1"><span class="text-muted">Base + Weight</span><span id="qSub">...</span></div>
+                                <div class="d-flex justify-content-between mb-1"><span class="text-muted">Fuel Surcharge &amp; GST</span><span id="qTax">...</span></div>
+                                <div class="d-flex justify-content-between fw-bold border-top pt-2 mt-1">
+                                    <span>Estimated Total</span>
+                                    <span class="text-primary" id="qTotal">...</span>
+                                </div>
+                            </div>
+
+                            <button type="submit" id="createBookingBtn" class="btn btn-orange w-100 py-2">
+                                <i class="bi bi-check2-circle me-1"></i>CONFIRM BOOKING &amp; GENERATE AWB
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="col-xl-8">
+                    <div class="slx-card overflow-hidden">
+                        <div class="p-3 border-bottom d-flex flex-wrap gap-2 justify-content-between align-items-center">
+                            <div class="input-group input-group-sm" style="max-width: 280px;">
+                                <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                                <input type="text" id="searchInput" class="form-control" placeholder="Search ref, tracking, customer...">
+                            </div>
+                            <div class="d-flex gap-2">
+                                <select id="filterStatus" class="form-select form-select-sm" style="width:auto;">
+                                    <option value="ALL">All Statuses</option>
+                                    <option value="BOOKED">Booked</option>
+                                    <option value="PICKED_UP">Picked Up</option>
+                                    <option value="IN_TRANSIT">In Transit</option>
+                                    <option value="OUT_FOR_DELIVERY">Out for Delivery</option>
+                                    <option value="DELIVERED">Delivered</option>
+                                    <option value="CANCELLED">Cancelled</option>
+                                </select>
+                                <select id="filterService" class="form-select form-select-sm" style="width:auto;">
+                                    <option value="ALL">All Services</option>
+                                    <option value="STANDARD">Standard Road</option>
+                                    <option value="EXPRESS">Express Air</option>
+                                    <option value="COLD_CHAIN">Cold Chain</option>
+                                    <option value="PORT_CONTAINER">Port / Container</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table slx-table">
+                                <thead>
+                                    <tr>
+                                        <th>Booking / AWB</th>
+                                        <th>Customer</th>
+                                        <th>Route &amp; Cargo</th>
+                                        <th>Cost</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bookingsTableBody">
+                                    <tr><td colspan="6" class="text-center py-4 text-muted">Loading bookings...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- Printable Waybill Modal -->
+<div class="modal fade" id="waybillModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold"><i class="bi bi-upc-scan me-1"></i>Consignment Waybill / Shipping Label</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="waybillBody"></div>
+            <div class="modal-footer">
+                <button class="btn btn-light btn-sm" data-bs-dismiss="modal">Close</button>
+                <button class="btn btn-navy btn-sm" onclick="window.print()"><i class="bi bi-printer me-1"></i>Print Waybill</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api.js"></script>
+<script src="js/layout.js"></script>
+<script>
+let currentUser = null;
+let cachedBookings = [];
+
+(async function () {
+    currentUser = await window.SLX.initAppShell("Bookings & Consignments");
+    if (!currentUser) return;
+
+    if (currentUser.role === "CUSTOMER") {
+        document.getElementById("customerFieldsWrap").classList.add("d-none");
+        document.getElementById("customerName").required = false;
+        document.getElementById("phone").required = false;
+    }
+
+    await updateQuote();
+    await loadBookings();
+
+    ["weightKg", "serviceType", "declaredValue"].forEach((id) => {
+        document.getElementById(id).addEventListener("input", updateQuote);
+        document.getElementById(id).addEventListener("change", updateQuote);
+    });
+    ["searchInput", "filterStatus", "filterService"].forEach((id) => {
+        document.getElementById(id).addEventListener("input", loadBookings);
+        document.getElementById(id).addEventListener("change", loadBookings);
+    });
+})();
+
+async function updateQuote() {
+    try {
+        const q = await window.SLX.apiFetch("/api/bookings/quote", {
+            method: "POST",
+            body: JSON.stringify({
+                weightKg: document.getElementById("weightKg").value,
+                serviceType: document.getElementById("serviceType").value,
+                declaredValue: document.getElementById("declaredValue").value
+            })
+        });
+        document.getElementById("qSub").textContent = window.SLX.formatINR(q.baseCharge + q.weightCharge + q.insuranceFee);
+        document.getElementById("qTax").textContent = window.SLX.formatINR(q.fuelSurcharge + q.taxAmount);
+        document.getElementById("qTotal").textContent = `${window.SLX.formatINR(q.totalAmount)} (ETA ${q.etaDays}d)`;
+    } catch (_) {}
+}
+
+async function loadBookings() {
+    const q = encodeURIComponent(document.getElementById("searchInput").value.trim());
+    const status = encodeURIComponent(document.getElementById("filterStatus").value);
+    const serviceType = encodeURIComponent(document.getElementById("filterService").value);
+    try {
+        cachedBookings = await window.SLX.apiFetch(`/api/bookings?q=${q}&status=${status}&serviceType=${serviceType}`);
+        const tbody = document.getElementById("bookingsTableBody");
+        if (!cachedBookings.length) {
+            tbody.innerHTML = `<tr><td colspan="6"><div class="slx-empty"><i class="bi bi-box"></i>No matching bookings found.</div></td></tr>`;
+            return;
+        }
+        const canCancel = ["ADMIN", "DISPATCHER"].includes(currentUser.role);
+        tbody.innerHTML = cachedBookings.map((b) => `
+            <tr>
+                <td>
+                    <div class="fw-semibold font-mono">${window.SLX.escapeHtml(b.bookingReference)}</div>
+                    <a href="tracking.html?trk=${encodeURIComponent(b.trackingNumber)}" class="font-mono small text-decoration-none">${window.SLX.escapeHtml(b.trackingNumber)}</a>
+                </td>
+                <td>
+                    <div class="fw-medium">${window.SLX.escapeHtml(b.customerName)}</div>
+                    <div class="text-muted small">${window.SLX.escapeHtml(b.phone)}</div>
+                </td>
+                <td>
+                    <div class="small">${window.SLX.escapeHtml(b.pickupAddress)} &rarr; ${window.SLX.escapeHtml(b.deliveryAddress)}</div>
+                    <div class="text-muted" style="font-size:0.75rem;">${window.SLX.escapeHtml(b.parcelDescription)} &bull; ${b.weightKg} kg &bull; ${window.SLX.escapeHtml(window.SLX.formatServiceType(b.serviceType))}</div>
+                </td>
+                <td class="fw-semibold small">
+                    <div>${window.SLX.formatINR(b.estimatedCost)}</div>
+                    <div class="text-muted" style="font-size:0.72rem;">${window.SLX.escapeHtml(b.paymentStatus || "UNPAID")}</div>
+                </td>
+                <td>${window.SLX.getStatusBadge(b.status)}</td>
+                <td class="text-nowrap">
+                    <button class="btn btn-light border btn-sm" title="Waybill" onclick="openWaybill(${b.bookingId})"><i class="bi bi-upc-scan"></i></button>
+                    <a class="btn btn-light border btn-sm" title="Track" href="tracking.html?trk=${encodeURIComponent(b.trackingNumber)}"><i class="bi bi-geo-alt"></i></a>
+                    ${canCancel && b.status !== "DELIVERED" && b.status !== "CANCELLED" ? `<button class="btn btn-outline-danger btn-sm" title="Cancel" onclick="cancelBooking(${b.bookingId})"><i class="bi bi-x-lg"></i></button>` : ""}
+                </td>
+            </tr>
+        `).join("");
+    } catch (err) {
+        window.SLX.showToast(err.message, "error");
+    }
+}
+
+document.getElementById("bookingForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById("createBookingBtn");
+    btn.disabled = true;
+    try {
+        const res = await window.SLX.apiFetch("/api/bookings", {
+            method: "POST",
+            body: JSON.stringify({
+                customerName: document.getElementById("customerName").value,
+                phone: document.getElementById("phone").value,
+                email: document.getElementById("customerEmail").value,
+                pickupAddress: document.getElementById("pickupAddress").value,
+                deliveryAddress: document.getElementById("deliveryAddress").value,
+                parcelDescription: document.getElementById("parcelDescription").value,
+                serviceType: document.getElementById("serviceType").value,
+                weightKg: document.getElementById("weightKg").value,
+                dimensionsCm: document.getElementById("dimensionsCm").value,
+                declaredValue: document.getElementById("declaredValue").value
+            })
+        });
+        window.SLX.showToast(`Booking ${res.bookingReference} created (AWB: ${res.trackingNumber})`, "success");
+        e.target.reset();
+        document.getElementById("weightKg").value = "10";
+        document.getElementById("dimensionsCm").value = "50x40x30";
+        document.getElementById("declaredValue").value = "25000";
+        await updateQuote();
+        await loadBookings();
+    } catch (err) {
+        window.SLX.showToast(err.message, "error");
+    } finally {
+        btn.disabled = false;
+    }
+});
+
+function openWaybill(bookingId) {
+    const b = cachedBookings.find((x) => x.bookingId === bookingId);
+    if (!b) return;
+    document.getElementById("waybillBody").innerHTML = `
+        <div class="border rounded-3 p-3">
+            <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                <div>
+                    <div class="fw-bold">SMARTLOGIX AIR / ROAD WAYBILL</div>
+                    <div class="small text-muted">${window.SLX.escapeHtml(window.SLX.formatServiceType(b.serviceType))}</div>
+                </div>
+                <div class="text-end font-mono">
+                    <div class="fw-bold fs-6">${window.SLX.escapeHtml(b.trackingNumber)}</div>
+                    <div class="small text-muted">${window.SLX.escapeHtml(b.bookingReference)}</div>
+                </div>
+            </div>
+            <div class="row g-2 small mb-3">
+                <div class="col-6"><strong>Shipper:</strong><br>${window.SLX.escapeHtml(b.customerName)}<br>${window.SLX.escapeHtml(b.pickupAddress)}</div>
+                <div class="col-6"><strong>Consignee / Destination:</strong><br>${window.SLX.escapeHtml(b.deliveryAddress)}</div>
+            </div>
+            <div class="row g-2 small border-top pt-2">
+                <div class="col-4"><strong>Weight:</strong> ${b.weightKg} kg</div>
+                <div class="col-4"><strong>Dims:</strong> ${window.SLX.escapeHtml(b.dimensionsCm || "-")} cm</div>
+                <div class="col-4"><strong>Freight:</strong> ${window.SLX.formatINR(b.estimatedCost)}</div>
+                <div class="col-12 mt-1"><strong>Contents:</strong> ${window.SLX.escapeHtml(b.parcelDescription)}</div>
+            </div>
+        </div>`;
+    new bootstrap.Modal(document.getElementById("waybillModal")).show();
+}
+
+async function cancelBooking(bookingId) {
+    if (!confirm("Cancel this consignment and release any assigned vehicle/driver?")) return;
+    try {
+        const res = await window.SLX.apiFetch(`/api/bookings/${bookingId}/cancel`, {
+            method: "POST",
+            body: JSON.stringify({ reason: "Cancelled from Bookings console" })
+        });
+        window.SLX.showToast(res.message, "info");
+        await loadBookings();
+    } catch (err) {
+        window.SLX.showToast(err.message, "error");
+    }
+}
+</script>
+</body>
+</html>

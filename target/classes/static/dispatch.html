@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartLogix – Dispatch &amp; Route Planning</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="slx-backdrop" id="slxBackdrop"></div>
+<div class="slx-shell">
+    <aside class="slx-sidebar" id="slxSidebar"></aside>
+    <div class="slx-main">
+        <header class="slx-topbar" id="slxTopbar"></header>
+        <main class="slx-content">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h4 class="fw-bold mb-0">Dispatch Board &amp; Route Scheduling</h4>
+                    <p class="text-muted small mb-0">Assign fleet vehicles and drivers to pending or active consignments.</p>
+                </div>
+                <button class="btn btn-light border btn-sm" onclick="loadDispatch()"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-lg-8">
+                    <div class="slx-card overflow-hidden">
+                        <div class="p-3 border-bottom fw-bold small text-uppercase text-muted">Active Dispatch Queue</div>
+                        <div class="table-responsive">
+                            <table class="table slx-table">
+                                <thead>
+                                    <tr>
+                                        <th>Shipment</th>
+                                        <th>Route &amp; Cargo</th>
+                                        <th>ETA</th>
+                                        <th>Assigned Fleet</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dispatchTableBody">
+                                    <tr><td colspan="6" class="text-center py-4 text-muted">Loading dispatch board...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="slx-card p-3 mb-3">
+                        <h6 class="fw-bold mb-3"><i class="bi bi-truck me-1 text-primary"></i>Fleet Readiness</h6>
+                        <div id="fleetSideList" class="d-flex flex-column gap-2 small"></div>
+                    </div>
+                    <div class="slx-card p-3">
+                        <h6 class="fw-bold mb-3"><i class="bi bi-person-badge me-1 text-success"></i>Driver Roster</h6>
+                        <div id="driverSideList" class="d-flex flex-column gap-2 small"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- Assign Fleet Modal -->
+<div class="modal fade" id="assignModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold">Assign Vehicle &amp; Driver</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="assignForm">
+                <div class="modal-body">
+                    <input type="hidden" id="assignShipmentId">
+                    <div class="p-2 rounded bg-light small mb-3 font-mono fw-semibold" id="assignShipmentLabel"></div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Select Vehicle *</label>
+                        <select id="assignVehicleId" class="form-select" required></select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Select Driver *</label>
+                        <select id="assignDriverId" class="form-select" required></select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Target Delivery Date (ETA)</label>
+                        <input type="date" id="assignEta" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-orange btn-sm">Confirm Dispatch</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api.js"></script>
+<script src="js/layout.js"></script>
+<script>
+let boardData = null;
+let currentUser = null;
+let assignModalInst = null;
+
+(async function () {
+    currentUser = await window.SLX.initAppShell("Dispatch & Routes");
+    if (!currentUser) return;
+    assignModalInst = new bootstrap.Modal(document.getElementById("assignModal"));
+    await loadDispatch();
+})();
+
+async function loadDispatch() {
+    try {
+        boardData = await window.SLX.apiFetch("/api/dispatch/board");
+        const canAssign = ["ADMIN", "DISPATCHER"].includes(currentUser.role);
+        const tbody = document.getElementById("dispatchTableBody");
+
+        if (!boardData.shipments.length) {
+            tbody.innerHTML = `<tr><td colspan="6"><div class="slx-empty"><i class="bi bi-check2-all"></i>All shipments have been delivered.</div></td></tr>`;
+        } else {
+            tbody.innerHTML = boardData.shipments.map((s) => `
+                <tr>
+                    <td>
+                        <div class="fw-semibold font-mono">${window.SLX.escapeHtml(s.trackingNumber)}</div>
+                        <div class="text-muted small">${window.SLX.escapeHtml(s.customerName)}</div>
+                    </td>
+                    <td>
+                        <div class="small">${window.SLX.escapeHtml(s.pickupAddress)} &rarr; ${window.SLX.escapeHtml(s.deliveryAddress)}</div>
+                        <div class="text-muted" style="font-size:0.74rem;">${s.weightKg} kg &bull; ${window.SLX.escapeHtml(window.SLX.formatServiceType(s.serviceType))}</div>
+                    </td>
+                    <td class="small font-mono">${window.SLX.escapeHtml(s.estimatedDeliveryDate || "TBD")}</td>
+                    <td class="small">
+                        ${s.vehicleReg ? `<div class="fw-semibold font-mono">${window.SLX.escapeHtml(s.vehicleReg)}</div><div class="text-muted">${window.SLX.escapeHtml(s.driverName || "")}</div>` : '<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Needs Assignment</span>'}
+                    </td>
+                    <td>${window.SLX.getStatusBadge(s.currentStatus)}</td>
+                    <td class="text-nowrap">
+                        ${canAssign ? `<button class="btn btn-navy btn-sm" onclick="openAssign(${s.shipmentId})">${s.vehicleReg ? "Reassign" : "Assign"}</button>` : `<a href="tracking.html?trk=${encodeURIComponent(s.trackingNumber)}" class="btn btn-light border btn-sm">Update</a>`}
+                    </td>
+                </tr>
+            `).join("");
+        }
+
+        document.getElementById("fleetSideList").innerHTML = boardData.availableVehicles.map((v) => `
+            <div class="d-flex justify-content-between align-items-center p-2 rounded border bg-light">
+                <div>
+                    <div class="fw-semibold font-mono">${window.SLX.escapeHtml(v.registrationNumber)}</div>
+                    <div class="text-muted" style="font-size:0.74rem;">${window.SLX.escapeHtml(v.vehicleType)} &bull; ${window.SLX.escapeHtml(v.capacity)}</div>
+                </div>
+                ${window.SLX.getStatusBadge(v.availabilityStatus)}
+            </div>
+        `).join("");
+
+        document.getElementById("driverSideList").innerHTML = boardData.availableDrivers.map((d) => `
+            <div class="d-flex justify-content-between align-items-center p-2 rounded border bg-light">
+                <div>
+                    <div class="fw-semibold">${window.SLX.escapeHtml(d.driverName)}</div>
+                    <div class="text-muted" style="font-size:0.74rem;">${window.SLX.escapeHtml(d.phone)}</div>
+                </div>
+                ${window.SLX.getStatusBadge(d.availabilityStatus)}
+            </div>
+        `).join("");
+    } catch (err) {
+        window.SLX.showToast(err.message, "error");
+    }
+}
+
+function openAssign(shipmentId) {
+    const s = boardData.shipments.find((x) => x.shipmentId === shipmentId);
+    if (!s) return;
+    document.getElementById("assignShipmentId").value = s.shipmentId;
+    document.getElementById("assignShipmentLabel").textContent = `${s.trackingNumber} — ${s.pickupAddress} → ${s.deliveryAddress}`;
+    document.getElementById("assignEta").value = s.estimatedDeliveryDate || "";
+
+    const vSel = document.getElementById("assignVehicleId");
+    vSel.innerHTML = boardData.availableVehicles
+        .filter((v) => v.availabilityStatus !== "MAINTENANCE")
+        .map((v) => `<option value="${v.vehicleId}" ${v.vehicleId === s.vehicleId ? "selected" : ""}>${window.SLX.escapeHtml(v.registrationNumber)} (${window.SLX.escapeHtml(v.vehicleType)} - ${v.availabilityStatus})</option>`)
+        .join("");
+
+    const dSel = document.getElementById("assignDriverId");
+    dSel.innerHTML = boardData.availableDrivers
+        .map((d) => `<option value="${d.driverId}" ${d.driverId === s.driverId ? "selected" : ""}>${window.SLX.escapeHtml(d.driverName)} (${d.availabilityStatus})</option>`)
+        .join("");
+
+    assignModalInst.show();
+}
+
+document.getElementById("assignForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    try {
+        const res = await window.SLX.apiFetch("/api/dispatch/assign", {
+            method: "POST",
+            body: JSON.stringify({
+                shipmentId: document.getElementById("assignShipmentId").value,
+                vehicleId: document.getElementById("assignVehicleId").value,
+                driverId: document.getElementById("assignDriverId").value,
+                estimatedDeliveryDate: document.getElementById("assignEta").value
+            })
+        });
+        assignModalInst.hide();
+        window.SLX.showToast(res.message, "success");
+        await loadDispatch();
+    } catch (err) {
+        window.SLX.showToast(err.message, "error");
+    }
+});
+</script>
+</body>
+</html>

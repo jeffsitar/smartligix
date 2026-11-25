@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartLogix – Customer Accounts</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="slx-backdrop" id="slxBackdrop"></div>
+<div class="slx-shell">
+    <aside class="slx-sidebar" id="slxSidebar"></aside>
+    <div class="slx-main">
+        <header class="slx-topbar" id="slxTopbar"></header>
+        <main class="slx-content">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+                <div class="input-group input-group-sm" style="max-width:300px;">
+                    <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                    <input type="text" id="custSearch" class="form-control" placeholder="Search customer, company, city...">
+                </div>
+                <button class="btn btn-orange btn-sm" id="addCustomerBtn" data-bs-toggle="modal" data-bs-target="#customerModal">
+                    <i class="bi bi-plus-lg me-1"></i>Add Corporate Account
+                </button>
+            </div>
+
+            <div class="slx-card overflow-hidden">
+                <div class="table-responsive">
+                    <table class="table slx-table">
+                        <thead>
+                            <tr>
+                                <th>Customer / Company</th>
+                                <th>Contact &amp; GSTIN</th>
+                                <th>City</th>
+                                <th>Shipments</th>
+                                <th>Total Spend</th>
+                                <th>Outstanding</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customersBody">
+                            <tr><td colspan="7" class="text-center py-4 text-muted">Loading customers...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- Add Customer Modal -->
+<div class="modal fade" id="customerModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold">Register Corporate Customer</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="customerForm">
+                <div class="modal-body row g-2">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Contact Name *</label>
+                        <input type="text" id="cName" class="form-control form-control-sm" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Company Name</label>
+                        <input type="text" id="cCompany" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Phone *</label>
+                        <input type="text" id="cPhone" class="form-control form-control-sm" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Email</label>
+                        <input type="email" id="cEmail" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">GSTIN</label>
+                        <input type="text" id="cGstin" class="form-control form-control-sm font-mono">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">City</label>
+                        <input type="text" id="cCity" class="form-control form-control-sm" value="Mumbai">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">Billing / Warehouse Address *</label>
+                        <input type="text" id="cAddress" class="form-control form-control-sm" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-orange btn-sm">Save Customer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Customer History Modal -->
+<div class="modal fade" id="historyModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold" id="histTitle">Customer Shipment History</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="histBody"></div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api.js"></script>
+<script src="js/layout.js"></script>
+<script>
+(async function () {
+    const user = await window.SLX.initAppShell("Customer Accounts");
+    if (!user) return;
+    if (!["ADMIN", "DISPATCHER"].includes(user.role)) {
+        document.getElementById("addCustomerBtn").classList.add("d-none");
+    }
+    document.getElementById("custSearch").addEventListener("input", loadCustomers);
+    await loadCustomers();
+})();
+
+async function loadCustomers() {
+    const q = encodeURIComponent(document.getElementById("custSearch").value.trim());
+    try {
+        const list = await window.SLX.apiFetch(`/api/customers?q=${q}`);
+        const tbody = document.getElementById("customersBody");
+        if (!list.length) {
+            tbody.innerHTML = `<tr><td colspan="7"><div class="slx-empty"><i class="bi bi-buildings"></i>No customer accounts found.</div></td></tr>`;
+            return;
+        }
+        tbody.innerHTML = list.map((c) => `
+            <tr>
+                <td>
+                    <div class="fw-semibold">${window.SLX.escapeHtml(c.customerName)}</div>
+                    <div class="text-muted small">${window.SLX.escapeHtml(c.companyName || "")}</div>
+                </td>
+                <td class="small">
+                    <div>${window.SLX.escapeHtml(c.phone)} &bull; ${window.SLX.escapeHtml(c.email || "-")}</div>
+                    <div class="font-mono text-muted" style="font-size:0.74rem;">${window.SLX.escapeHtml(c.gstin || "No GSTIN")}</div>
+                </td>
+                <td class="small">${window.SLX.escapeHtml(c.city || "-")}</td>
+                <td class="fw-semibold">${c.totalBookings}</td>
+                <td class="fw-semibold">${window.SLX.formatINR(c.totalSpend)}</td>
+                <td class="${c.outstandingBalance > 0 ? "text-danger fw-semibold" : "text-success"}">${window.SLX.formatINR(c.outstandingBalance)}</td>
+                <td><button class="btn btn-light border btn-sm" onclick="viewHistory(${c.customerId})">History</button></td>
+            </tr>
+        `).join("");
+    } catch (err) {
+        window.SLX.showToast(err.message, "error");
+    }
+}
+
+document.getElementById("customerForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    try {
+        await window.SLX.apiFetch("/api/customers", {
+            method: "POST",
+            body: JSON.stringify({
+                customerName: document.getElementById("cName").value,
+                companyName: document.getElementById("cCompany").value,
+                phone: document.getElementById("cPhone").value,
+                email: document.getElementById("cEmail").value,
+                gstin: document.getElementById("cGstin").value,
+                city: document.getElementById("cCity").value,
+                address: document.getElementById("cAddress").value
+            })
+        });
+        bootstrap.Modal.getInstance(document.getElementById("customerModal")).hide();
+        e.target.reset();
+        window.SLX.showToast("Customer account created.", "success");
+        loadCustomers();
+    } catch (err) {
+        window.SLX.showToast(err.message, "error");
+    }
+});
+
+async function viewHistory(customerId) {
+    try {
+        const data = await window.SLX.apiFetch(`/api/customers/${customerId}/shipments`);
+        document.getElementById("histTitle").textContent = `${data.customer.customerName} — Consignment Ledger`;
+        document.getElementById("histBody").innerHTML = !data.bookings.length
+            ? `<div class="slx-empty"><i class="bi bi-inbox"></i>No shipments recorded for this customer.</div>`
+            : `<div class="table-responsive"><table class="table slx-table">
+                <thead><tr><th>Tracking</th><th>Route</th><th>Date</th><th>Cost</th><th>Status</th></tr></thead>
+                <tbody>${data.bookings.map((b) => `
+                    <tr>
+                        <td class="font-mono"><a href="tracking.html?trk=${encodeURIComponent(b.trackingNumber)}">${window.SLX.escapeHtml(b.trackingNumber)}</a></td>
+                        <td class="small">${window.SLX.escapeHtml(b.pickupAddress)} &rarr; ${window.SLX.escapeHtml(b.deliveryAddress)}</td>
+                        <td class="small">${window.SLX.escapeHtml(b.bookingDate)}</td>
+                        <td class="fw-semibold">${window.SLX.formatINR(b.estimatedCost)}</td>
+                        <td>${window.SLX.getStatusBadge(b.status)}</td>
+                    </tr>`).join("")}
+                </tbody></table></div>`;
+        new bootstrap.Modal(document.getElementById("historyModal")).show();
+    } catch (err) {
+        window.SLX.showToast(err.message, "error");
+    }
+}
+</script>
+</body>
+</html>
